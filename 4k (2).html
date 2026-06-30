@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>早撃ちパニック 4K+</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for Ultra-Stylish and Readable UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Zen+Kaku+Gothic+New:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Zen Kaku Gothic New', 'Orbitron', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      background-color: #060913;
+      overflow: hidden;
+    }
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+    .digital-font {
+      font-family: 'Share Tech Mono', monospace;
+    }
+    /* 3Dパースペクティブ */
+    .game-container {
+      perspective: 1200px;
+      perspective-origin: 50% 25%;
+    }
+    /* レーンを傾けて3Dの奥行きを強調 */
+    .lanes-wrapper {
+      transform: rotateX(28deg);
+      transform-style: preserve-3d;
+    }
+    /* 個別レーン：よりサイバーで高コントラストなデザイン */
+    .lane {
+      position: relative;
+      background: linear-gradient(to bottom, rgba(8, 47, 73, 0.1) 0%, rgba(6, 182, 212, 0.15) 100%);
+      border-left: 1px solid rgba(34, 211, 238, 0.15);
+      border-right: 1px solid rgba(34, 211, 238, 0.15);
+      box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.05);
+    }
+    /* ターゲット：瞬間移動のために transition は一切設定しない */
+    .target-circle {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: none !important; /* アニメーションなしで即切り替え */
+      transform-style: preserve-3d;
+    }
+    /* ターゲットマークデザイン (大きく視認性優先、エフェクト類は排除) */
+    .bullseye-circle {
+      border: 5px solid #ffffff;
+      background: radial-gradient(circle, #06b6d4 0%, #0891b2 20%, #0f172a 21%, #0f172a 50%, #ef4444 51%, #ef4444 75%, #ffffff 76%, #ffffff 100%);
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), inset 0 0 10px rgba(0,0,0,0.5);
+    }
+    .bullseye-circle.active-target {
+      border-color: #38bdf8;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.9), inset 0 0 15px rgba(255,255,255,0.4);
+    }
+    /* ミスペナルティ暗転（少し暗くするだけのシンプルなオーバーレイ） */
+    .miss-overlay {
+      background-color: rgba(0, 0, 0, 0.65);
+      transition: none;
+    }
+    /* キー割り当ての光るエフェクト */
+    .key-hint {
+      box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+      text-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+    }
+    /* スマホ等でのタップ領域のフィードバック */
+    .tap-flash {
+      background: linear-gradient(to top, rgba(34, 211, 238, 0.3), transparent);
+      opacity: 0;
+      transition: opacity 0.05s ease-out;
+    }
+    .tap-flash.active {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="w-full h-screen flex flex-col justify-between text-white select-none">
+
+  <!-- 1. メインメニュー画面 -->
+  <div id="menu-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between p-6 bg-gradient-to-b from-[#030712] via-[#0b1329] to-[#042f44] overflow-y-auto">
+    
+    <!-- ヘッダータイトル -->
+    <div class="w-full max-w-lg mx-auto text-center mt-3">
+      <div class="relative inline-block">
+        <span class="absolute -top-5 -left-5 bg-cyan-500 text-slate-950 text-[10px] font-black px-2 py-0.5 uppercase tracking-widest rounded transform -rotate-6 font-orbitron">
+          MULTIPLE LANES SYSTEM
+        </span>
+        <h1 class="text-3xl md:text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 drop-shadow-[0_4px_15px_rgba(6,182,212,0.4)] font-orbitron">
+          早撃ちパニック <span class="text-cyan-400" id="title-lane-count">4K</span>
+        </h1>
+      </div>
+      <p class="text-slate-400 text-[11px] mt-2 tracking-widest uppercase">3Kから6Kまで幅広く対応した極限スピードアクション</p>
+    </div>
+
+    <!-- レーン数(Key)セレクタータブ -->
+    <div class="w-full max-w-lg bg-slate-950/90 border border-slate-800 p-1.5 rounded-2xl flex justify-between gap-1 shadow-xl">
+      <button onclick="changeKeyCount(3)" id="tab-key-3" class="flex-1 py-2 rounded-xl text-xs font-black font-orbitron transition duration-150 text-slate-400 hover:text-white">3K</button>
+      <button onclick="changeKeyCount(4)" id="tab-key-4" class="flex-1 py-2 rounded-xl text-xs font-black font-orbitron transition duration-150 bg-cyan-600 text-white">4K</button>
+      <button onclick="changeKeyCount(5)" id="tab-key-5" class="flex-1 py-2 rounded-xl text-xs font-black font-orbitron transition duration-150 text-slate-400 hover:text-white">5K</button>
+      <button onclick="changeKeyCount(6)" id="tab-key-6" class="flex-1 py-2 rounded-xl text-xs font-black font-orbitron transition duration-150 text-slate-400 hover:text-white">6K</button>
+    </div>
+
+    <!-- メインコンテンツ領域（モード選択 ＋ ランキング ＋ キーバインド設定） -->
+    <div class="w-full max-w-lg grid grid-cols-1 gap-3.5 my-1">
+      
+      <!-- モード選択 -->
+      <div class="bg-slate-950/80 border border-cyan-500/30 rounded-2xl p-4 shadow-2xl">
+        <h2 class="text-cyan-400 text-xs font-black tracking-widest uppercase mb-2.5 text-center font-orbitron">SELECT GAME MODE</h2>
+        
+        <div class="space-y-2">
+          <!-- タイムアタック50 -->
+          <button onclick="selectMode('time-attack')" class="group relative w-full bg-gradient-to-r from-cyan-950/80 to-blue-950/80 hover:from-cyan-900/90 hover:to-blue-900/90 p-3 rounded-xl flex items-center justify-between transition-all duration-200 border border-cyan-500/30 hover:border-cyan-400 hover:scale-[1.01] shadow-md">
+            <div class="text-left">
+              <span class="block text-base font-black text-white tracking-wider font-orbitron">TIME ATTACK [50]</span>
+              <span class="block text-[10px] text-cyan-300">50枚のターゲットを最速で撃ち抜け！</span>
+            </div>
+            <div class="bg-cyan-950/60 px-2.5 py-1 rounded-lg text-right border border-cyan-500/20">
+              <span class="block text-[8px] text-cyan-400 font-bold font-orbitron">BEST</span>
+              <span id="best-ta" class="block font-mono font-bold text-xs text-white">--.--s</span>
+            </div>
+          </button>
+
+          <!-- 10秒リミット -->
+          <button onclick="selectMode('time-limit')" class="group relative w-full bg-gradient-to-r from-purple-950/80 to-indigo-950/80 hover:from-purple-900/90 hover:to-indigo-900/90 p-3 rounded-xl flex items-center justify-between transition-all duration-200 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.01] shadow-md">
+            <div class="text-left">
+              <span class="block text-base font-black text-white tracking-wider font-orbitron">10s LIMIT CHALLENGE</span>
+              <span class="block text-[10px] text-purple-300">制限時間10秒間で何枚撃破できるか！</span>
+            </div>
+            <div class="bg-purple-950/60 px-2.5 py-1 rounded-lg text-right border border-purple-500/20">
+              <span class="block text-[8px] text-purple-400 font-bold font-orbitron">BEST</span>
+              <span id="best-tl" class="block font-mono font-bold text-xs text-white">0 pts</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- タイトル画面でのランキング表示 -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 shadow-2xl">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-cyan-400 text-xs font-black tracking-widest uppercase font-orbitron">LEADERBOARD (自己ベスト)</h3>
+          <!-- モード切替ミニボタン -->
+          <div class="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+            <button id="menu-tab-ta" onclick="switchMenuRankingTab('time-attack')" class="text-[9px] px-2 py-0.5 rounded font-bold transition bg-cyan-600 text-white">TA [50]</button>
+            <button id="menu-tab-tl" onclick="switchMenuRankingTab('time-limit')" class="text-[9px] px-2 py-0.5 rounded font-bold transition text-slate-400 hover:text-white font-orbitron">10s LIMIT</button>
+          </div>
+        </div>
+        <div class="max-h-28 overflow-y-auto space-y-1 pr-1" id="menu-ranking-list">
+          <!-- JSでランキングを動的挿入 -->
+        </div>
+      </div>
+
+      <!-- インタラクティブ・キーバインド設定 (動的にキーの数が切り替わる) -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-xs font-black tracking-widest text-cyan-400 font-orbitron">KEY CONFIG (キー設定)</h3>
+          <button onclick="resetKeysToDefault()" class="text-[10px] text-slate-500 hover:text-cyan-400 underline transition">初期設定に戻す</button>
+        </div>
+        
+        <div class="grid grid-cols-6 gap-1.5 text-center font-bold" id="keyconfig-container">
+          <!-- JSで選択レーン数に応じたボタンを動的挿入 -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 操作ヘルプ / 注意事項 -->
+    <div class="w-full max-w-lg text-center text-[10px] text-slate-500 pb-1">
+      スマートフォン等のタッチ操作時は、画面下の各レーンを直接タップして高速プレイが可能です。
+    </div>
+  </div>
+
+
+  <!-- 2. ゲームプレイ画面 -->
+  <div id="game-screen" class="hidden relative w-full h-full flex flex-col justify-between overflow-hidden bg-[#03060f]">
+    
+    <!-- ヘッダーUI（スコア・タイマー） -->
+    <div class="w-full flex justify-between items-center px-4 py-3 bg-slate-950/90 border-b border-cyan-500/20 backdrop-blur z-20">
+      <div>
+        <button onclick="exitToMenu()" class="text-xs text-slate-400 hover:text-white bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 transition flex items-center gap-1 font-orbitron">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          MENU
+        </button>
+      </div>
+
+      <!-- タイマー -->
+      <div class="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+        <div class="bg-slate-950 border-2 border-cyan-500/60 rounded-xl px-7 py-1 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+          <span id="game-timer" class="digital-font text-3xl md:text-4xl font-bold text-cyan-400 tracking-widest">0.00</span>
+        </div>
+        <span id="timer-label" class="text-[9px] text-cyan-400/80 font-bold tracking-widest mt-1 uppercase font-orbitron">TIME</span>
+      </div>
+
+      <!-- カウンター -->
+      <div class="text-right">
+        <div class="text-slate-400 text-[9px] uppercase font-bold tracking-widest font-orbitron" id="counter-label">SHOTS</div>
+        <div class="text-2xl font-black text-white leading-none font-orbitron">
+          <span id="shot-count" class="text-cyan-400">0</span><span id="shot-target-total" class="text-slate-600 text-sm">/50</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 画面中央：ゲームフィールド -->
+    <div class="game-container relative flex-1 w-full max-w-xl mx-auto flex items-end justify-center pb-24 px-4 overflow-hidden">
+      
+      <!-- 奥の境界表現 -->
+      <div class="absolute top-[8%] w-5/6 h-1 bg-gradient-to-r from-transparent via-cyan-950 to-transparent border-b border-cyan-800/20 opacity-50"></div>
+      
+      <!-- レーン全体（3K〜6Kに動的可変） -->
+      <div id="play-lanes-wrapper" class="lanes-wrapper w-full h-[145%] flex justify-between gap-1 origin-bottom">
+        <!-- JSで動的にレーンを挿入 -->
+      </div>
+
+      <!-- 手前の判定ライン＆操作指示用キー（動的に挿入） -->
+      <div id="play-keys-indicator" class="absolute bottom-6 w-full flex justify-between gap-1.5 px-1 z-10 pointer-events-none">
+        <!-- JSで動的にキーヒントを挿入 -->
+      </div>
+
+      <!-- ミス暗転時のペナルティ画面 -->
+      <div id="miss-panel" class="miss-overlay absolute inset-0 hidden z-30 pointer-events-none"></div>
+
+      <!-- READY画面表示 -->
+      <div id="ready-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/10 z-10 pointer-events-none">
+        <div class="text-center">
+          <div class="text-yellow-400 font-black text-5xl md:text-6xl tracking-widest font-orbitron animate-pulse">READY</div>
+          <p class="text-xs text-slate-200 mt-3 font-bold tracking-widest bg-slate-950/80 px-4 py-2 rounded-full border border-yellow-500/30">
+            一番手前のターゲットを撃ち抜いてスタート！
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- フッターUI：プログレスバー -->
+    <div class="w-full bg-slate-950/95 py-3.5 px-4 border-t border-slate-900 flex justify-between items-center text-xs text-slate-400 z-10">
+      <div class="flex-1 mr-4">
+        <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+          <div id="game-progress" class="bg-gradient-to-r from-cyan-400 to-sky-500 h-full w-0 transition-all duration-150"></div>
+        </div>
+      </div>
+      <div class="font-orbitron font-bold text-[10px]" id="bottom-status">
+        TARGET: <span class="text-cyan-400" id="bottom-next-char">D / F / J / K</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 3. リザルト・ランキング画面 -->
+  <div id="result-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-between p-6 bg-gradient-to-b from-[#030712] via-[#091024] to-[#0d1b3e] overflow-y-auto">
+    <div class="w-full max-w-md mx-auto text-center mt-4">
+      <span class="text-xs bg-cyan-500/20 text-cyan-400 font-bold px-3 py-1 rounded-full border border-cyan-500/30 uppercase tracking-widest font-orbitron">GAME SET</span>
+      <h2 class="text-4xl font-black text-white tracking-widest mt-2 font-orbitron">RESULT</h2>
+      <p id="result-mode-title" class="text-xs text-slate-400 mt-1 tracking-widest uppercase">TIME ATTACK [50]</p>
+    </div>
+
+    <!-- スコア表示エリア -->
+    <div class="w-full max-w-md my-4 flex flex-col gap-4">
+      <div class="bg-slate-950/90 border-2 border-cyan-500/40 rounded-2xl p-6 text-center shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl"></div>
+        
+        <span class="text-xs text-cyan-400 font-bold tracking-widest uppercase block font-orbitron">YOUR SCORE</span>
+        
+        <!-- 主要リザルト値 -->
+        <span id="result-score-val" class="digital-font text-5xl md:text-6xl font-extrabold text-white block my-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]">
+          00.00<span class="text-lg ml-1 font-sans font-bold">s</span>
+        </span>
+        
+        <!-- サブデータ -->
+        <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900 text-xs">
+          <div>
+            <span class="text-slate-400 block text-[11px]">撃ち抜いた枚数</span>
+            <span id="result-hit-count" class="font-bold text-lg text-cyan-400 font-orbitron">0 枚</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[11px]">ペナルティ(MISS)</span>
+            <span id="result-miss-count" class="font-bold text-lg text-red-400 font-orbitron">0 回</span>
+          </div>
+        </div>
+
+        <div id="new-record-tag" class="hidden mt-4 bg-yellow-500 text-slate-950 text-xs font-black py-1.5 rounded-lg uppercase tracking-widest font-orbitron">
+          🎉 NEW PERSONAL BEST! 🎉
+        </div>
+      </div>
+
+      <!-- 自己ベストランキング（10位まで） -->
+      <div class="bg-slate-950/80 border border-slate-900 rounded-2xl p-4">
+        <h3 class="text-cyan-400 text-xs font-black tracking-widest uppercase mb-3 flex items-center gap-2 font-orbitron">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+          PERSONAL BEST (TOP 10)
+        </h3>
+        <div class="max-h-48 overflow-y-auto space-y-1 pr-1" id="ranking-list">
+          <!-- JSでランキングを動的挿入 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- リザルトアクション -->
+    <div class="w-full max-w-md flex gap-3 mb-4">
+      <button onclick="restartGame()" class="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 py-3.5 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] shadow-lg shadow-cyan-950/50">
+        もう一度プレイ
+      </button>
+      <button onclick="exitToMenu()" class="flex-1 bg-slate-900 hover:bg-slate-800 py-3.5 rounded-xl font-bold text-slate-300 hover:text-white transition-all border border-slate-800">
+        メニューへ戻る
+      </button>
+    </div>
+  </div>
+
+  <!-- キー設定待機中のモーダルダイアログ -->
+  <div id="keybind-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 flex flex-col items-center justify-center p-6">
+    <div class="bg-slate-900 border-2 border-cyan-500 p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+      <span class="text-cyan-400 text-xs font-black tracking-widest uppercase block mb-2 font-orbitron">WAITING FOR KEY...</span>
+      <h3 class="text-xl font-black mb-4">レーン <span id="modal-lane-num" class="text-cyan-400">1</span> のキー設定</h3>
+      <p class="text-sm text-slate-300 leading-relaxed mb-6">
+        キーボードの割り当てたいキーを1つ押してください。<br>
+        <span class="text-slate-500 text-xs">(Enter, Escape, Space 以外の文字・記号)</span>
+      </p>
+      <div class="animate-pulse bg-cyan-950/50 py-3 rounded-lg border border-cyan-500/30 font-black text-cyan-400 text-lg font-orbitron">
+        キーを入力中...
+      </div>
+      <button onclick="cancelKeyAssign()" class="mt-6 text-xs text-slate-400 hover:text-white underline">キャンセル</button>
+    </div>
+  </div>
+
+
+  <!-- JavaScript Game Logic -->
+  <script>
+    // --- デフォルト＆現在の設定 ---
+    let keyCount = 4; // デフォルトは4K
+    let LANE_KEYS = ['D', 'F', 'J', 'K'];
+    let KEY_LANE_MAP = {}; 
+    let activeAssignLane = null;
+
+    // デフォルトキーバインド
+    const DEFAULT_KEYS = {
+      3: ['D', 'F', 'J'],
+      4: ['D', 'F', 'J', 'K'],
+      5: ['S', 'D', 'F', 'J', 'K'],
+      6: ['S', 'D', 'F', 'J', 'K', 'L']
+    };
+
+    // ゲーム状態
+    let gameMode = 'time-attack'; 
+    let isPlaying = false;
+    let isLocked = false; 
+    let isStarted = false; 
+    
+    let timerInterval = null;
+    let startTime = 0;
+    let elapsedTime = 0;
+    let limitTime = 10.0; 
+
+    let targetQueue = []; 
+    let currentIndex = 0; 
+    let totalMisses = 0;
+    let totalHits = 0;
+
+    let menuRankingTab = 'time-attack'; 
+
+    const DISPLAY_COUNT = 10; 
+    const TA_TARGET_TOTAL = 50; 
+
+    // --- 起動時の初期化 ---
+    window.addEventListener('DOMContentLoaded', () => {
+      // 保存されていた「最後に選択したキー数」を読み込み
+      const savedKeyCount = localStorage.getItem('quick_shooter_last_key_count');
+      if (savedKeyCount) {
+        keyCount = parseInt(savedKeyCount);
+      }
+      applyKeyCountUI();
+      loadSavedKeys();
+      loadBestScores();
+      setupKeyboardListeners();
+    });
+
+    // --- レーン数変更処理 ---
+    function changeKeyCount(num) {
+      keyCount = num;
+      localStorage.setItem('quick_shooter_last_key_count', num);
+      
+      applyKeyCountUI();
+      loadSavedKeys();
+      loadBestScores();
+    }
+
+    function applyKeyCountUI() {
+      // タブアクティブ化
+      for (let i = 3; i <= 6; i++) {
+        const tab = document.getElementById(`tab-key-${i}`);
+        if (i === keyCount) {
+          tab.className = "flex-1 py-2 rounded-xl text-xs font-black font-orbitron transition duration-150 bg-cyan-600 text-white shadow-lg";
+        } else {
+          tab.className = "flex-1 py-2 rounded-xl text-xs font-black font-orbitron transition duration-150 text-slate-400 hover:text-white";
+        }
+      }
+
+      // タイトル文更新
+      document.getElementById('title-lane-count').textContent = `${keyCount}K`;
+
+      // キーバインド設定エリアの動的書き換え
+      const container = document.getElementById('keyconfig-container');
+      container.innerHTML = '';
+      
+      // グリッド列数調整
+      container.className = `grid grid-cols-${keyCount} gap-1.5 text-center font-bold`;
+
+      for (let i = 0; i < keyCount; i++) {
+        const btn = document.createElement('button');
+        btn.id = `keyconfig-btn-${i}`;
+        btn.onclick = () => startKeyAssign(i);
+        btn.className = "bg-slate-900/90 border border-slate-800 hover:border-cyan-500/80 py-1.5 rounded-xl transition duration-150 group";
+        btn.innerHTML = `
+          <span class="text-slate-500 block text-[8px] font-bold group-hover:text-cyan-400 font-orbitron">L1</span>
+          <span id="key-val-${i}" class="text-xs font-black text-cyan-400 font-orbitron">-</span>
+        `;
+        container.appendChild(btn);
+      }
+    }
+
+    // --- キーバインド設定 & LocalStorage ---
+    function loadSavedKeys() {
+      const storageKey = `quick_shooter_keys_${keyCount}k`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          LANE_KEYS = JSON.parse(saved);
+        } catch(e) {
+          LANE_KEYS = [...DEFAULT_KEYS[keyCount]];
+        }
+      } else {
+        LANE_KEYS = [...DEFAULT_KEYS[keyCount]];
+      }
+
+      // レーン数に対してキー数が足りない場合の安全ガード
+      while (LANE_KEYS.length < keyCount) {
+        LANE_KEYS.push(DEFAULT_KEYS[keyCount][LANE_KEYS.length] || 'X');
+      }
+      LANE_KEYS = LANE_KEYS.slice(0, keyCount);
+
+      buildKeyMap();
+      updateKeyLabels();
+    }
+
+    function buildKeyMap() {
+      KEY_LANE_MAP = {};
+      LANE_KEYS.forEach((key, index) => {
+        KEY_LANE_MAP[key.toLowerCase()] = index;
+        KEY_LANE_MAP[key.toUpperCase()] = index;
+      });
+    }
+
+    function updateKeyLabels() {
+      for (let i = 0; i < keyCount; i++) {
+        const menuLabel = document.getElementById(`key-val-${i}`);
+        if (menuLabel) {
+          menuLabel.textContent = LANE_KEYS[i];
+          const spanL = menuLabel.previousElementSibling;
+          if (spanL) spanL.textContent = `LANE ${i + 1}`;
+        }
+      }
+    }
+
+    function startKeyAssign(laneIdx) {
+      activeAssignLane = laneIdx;
+      document.getElementById('modal-lane-num').textContent = laneIdx + 1;
+      document.getElementById('keybind-modal').classList.remove('hidden');
+    }
+
+    function cancelKeyAssign() {
+      activeAssignLane = null;
+      document.getElementById('keybind-modal').classList.add('hidden');
+    }
+
+    function handleKeyConfigInput(keyStr) {
+      if (activeAssignLane === null) return;
+      
+      if (['escape', 'enter', ' ', 'spacebar', 'backspace'].includes(keyStr.toLowerCase())) {
+        return;
+      }
+
+      const normalizedKey = keyStr.toUpperCase();
+      
+      const existingIndex = LANE_KEYS.indexOf(normalizedKey);
+      if (existingIndex !== -1 && existingIndex !== activeAssignLane) {
+        LANE_KEYS[existingIndex] = LANE_KEYS[activeAssignLane];
+      }
+
+      LANE_KEYS[activeAssignLane] = normalizedKey;
+      localStorage.setItem(`quick_shooter_keys_${keyCount}k`, JSON.stringify(LANE_KEYS));
+      
+      buildKeyMap();
+      updateKeyLabels();
+      cancelKeyAssign();
+    }
+
+    function resetKeysToDefault() {
+      LANE_KEYS = [...DEFAULT_KEYS[keyCount]];
+      localStorage.setItem(`quick_shooter_keys_${keyCount}k`, JSON.stringify(LANE_KEYS));
+      buildKeyMap();
+      updateKeyLabels();
+    }
+
+
+    // --- 画面表示制御 ---
+    function showScreen(screenId) {
+      document.getElementById('menu-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    // --- メニュー操作 ---
+    function selectMode(mode) {
+      gameMode = mode;
+      initGame();
+      showScreen('game-screen');
+    }
+
+    // --- 自己ベストデータ管理（レーン数別） ---
+    function getBestScoresKey() {
+      return `quick_shooter_${keyCount}k_scores_${gameMode}`;
+    }
+
+    function loadBestScores() {
+      const taScores = JSON.parse(localStorage.getItem(`quick_shooter_${keyCount}k_scores_time-attack`) || '[]');
+      const tlScores = JSON.parse(localStorage.getItem(`quick_shooter_${keyCount}k_scores_time-limit`) || '[]');
+
+      document.getElementById('best-ta').textContent = taScores.length > 0 ? taScores[0].toFixed(2) + 's' : '--.--s';
+      document.getElementById('best-tl').textContent = tlScores.length > 0 ? tlScores[0] + ' pts' : '0 pts';
+
+      // タイトル画面のランキング更新
+      displayMenuRanking();
+    }
+
+    function switchMenuRankingTab(mode) {
+      menuRankingTab = mode;
+      
+      const taTab = document.getElementById('menu-tab-ta');
+      const tlTab = document.getElementById('menu-tab-tl');
+      if (mode === 'time-attack') {
+        taTab.className = "text-[9px] px-2 py-0.5 rounded font-bold transition bg-cyan-600 text-white";
+        tlTab.className = "text-[9px] px-2 py-0.5 rounded font-bold transition text-slate-400 hover:text-white font-orbitron";
+      } else {
+        taTab.className = "text-[9px] px-2 py-0.5 rounded font-bold transition text-slate-400 hover:text-white font-orbitron";
+        tlTab.className = "text-[9px] px-2 py-0.5 rounded font-bold transition bg-cyan-600 text-white";
+      }
+      displayMenuRanking();
+    }
+
+    function displayMenuRanking() {
+      const key = `quick_shooter_${keyCount}k_scores_${menuRankingTab}`;
+      const scores = JSON.parse(localStorage.getItem(key) || '[]');
+      const container = document.getElementById('menu-ranking-list');
+      container.innerHTML = '';
+
+      if (scores.length === 0) {
+        container.innerHTML = `<div class="text-slate-500 text-xs text-center py-3 font-bold">記録がまだありません</div>`;
+        return;
+      }
+
+      scores.forEach((score, index) => {
+        const rankColor = index === 0 ? 'text-yellow-400' : index === 1 ? 'text-slate-300' : index === 2 ? 'text-amber-500' : 'text-slate-400';
+        const scoreText = menuRankingTab === 'time-attack' ? `${score.toFixed(2)}s` : `${score} pts`;
+
+        const row = document.createElement('div');
+        row.className = `flex justify-between items-center px-3 py-1 rounded-lg text-xs font-bold bg-slate-900/40 border border-slate-900/50`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="${rankColor} font-orbitron">#${index + 1}</span>
+          </div>
+          <span class="font-mono text-slate-300">${scoreText}</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function saveScore(score) {
+      const key = getBestScoresKey();
+      let scores = JSON.parse(localStorage.getItem(key) || '[]');
+      
+      scores.push(score);
+      
+      if (gameMode === 'time-attack') {
+        scores.sort((a, b) => a - b);
+      } else {
+        scores.sort((a, b) => b - a);
+      }
+      
+      scores = scores.slice(0, 10);
+      localStorage.setItem(key, JSON.stringify(scores));
+
+      return scores[0] === score;
+    }
+
+    function displayRanking(latestScore) {
+      const key = getBestScoresKey();
+      const scores = JSON.parse(localStorage.getItem(key) || '[]');
+      const container = document.getElementById('ranking-list');
+      container.innerHTML = '';
+
+      if (scores.length === 0) {
+        container.innerHTML = `<div class="text-slate-500 text-xs text-center py-4 font-bold">記録がまだありません</div>`;
+        return;
+      }
+
+      scores.forEach((score, index) => {
+        const isCurrent = (score === latestScore);
+        const rankColor = index === 0 ? 'text-yellow-400' : index === 1 ? 'text-slate-300' : index === 2 ? 'text-amber-500' : 'text-slate-400';
+        const rankBg = isCurrent ? 'bg-cyan-500/20 border border-cyan-500/40' : 'bg-slate-950/40 border border-transparent';
+        const scoreText = gameMode === 'time-attack' ? `${score.toFixed(2)}s` : `${score} pts`;
+
+        const row = document.createElement('div');
+        row.className = `flex justify-between items-center px-3 py-1.5 rounded-lg text-sm font-bold ${rankBg}`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="${rankColor} font-orbitron">#${index + 1}</span>
+            ${isCurrent ? '<span class="text-[9px] bg-cyan-400 text-slate-950 px-1 rounded font-bold">YOU</span>' : ''}
+          </div>
+          <span class="font-mono ${isCurrent ? 'text-cyan-400' : 'text-white'}">${scoreText}</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+
+    // --- ゲームの初期化＆構築 ---
+    function initGame() {
+      isPlaying = true;
+      isLocked = false;
+      isStarted = false;
+      currentIndex = 0;
+      totalMisses = 0;
+      totalHits = 0;
+      elapsedTime = 0;
+      
+      document.getElementById('game-timer').textContent = gameMode === 'time-attack' ? '0.00' : '10.00';
+      document.getElementById('ready-overlay').classList.remove('hidden');
+      document.getElementById('miss-panel').classList.add('hidden');
+      document.getElementById('shot-count').textContent = '0';
+
+      updateProgressBar();
+
+      if (gameMode === 'time-attack') {
+        document.getElementById('shot-target-total').textContent = `/${TA_TARGET_TOTAL}`;
+        document.getElementById('counter-label').textContent = 'SHOTS';
+        document.getElementById('timer-label').textContent = 'TIME';
+      } else {
+        document.getElementById('shot-target-total').textContent = '';
+        document.getElementById('counter-label').textContent = 'KILLS';
+        document.getElementById('timer-label').textContent = 'LIMIT';
+      }
+
+      // プレイレーンの動的構築
+      const lanesWrapper = document.getElementById('play-lanes-wrapper');
+      lanesWrapper.innerHTML = '';
+      for (let i = 0; i < keyCount; i++) {
+        const lEl = document.createElement('div');
+        lEl.id = `lane-${i}`;
+        lEl.className = "lane flex-1 h-full rounded-t-2xl overflow-hidden cursor-pointer";
+        // モバイル・マウスタッチ兼用ハンドラ
+        lEl.addEventListener('mousedown', (e) => { e.preventDefault(); handleLanePress(i, 'touch'); });
+        lEl.addEventListener('touchstart', (e) => { e.preventDefault(); handleLanePress(i, 'touch'); });
+        lEl.innerHTML = `<div class="tap-flash absolute inset-0 pointer-events-none" id="flash-${i}"></div>`;
+        lanesWrapper.appendChild(lEl);
+      }
+
+      // 手前キーインジケータの動的構築
+      const keysIndicator = document.getElementById('play-keys-indicator');
+      keysIndicator.innerHTML = '';
+      for (let i = 0; i < keyCount; i++) {
+        const kEl = document.createElement('div');
+        kEl.className = "flex-1 flex flex-col items-center";
+        kEl.innerHTML = `
+          <div id="lane-key-label-${i}" class="key-hint w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-950/95 border-2 border-cyan-500 flex items-center justify-center text-cyan-400 font-black text-sm md:text-base shadow-lg font-orbitron">${LANE_KEYS[i]}</div>
+          <span class="text-[8px] text-cyan-400/80 font-bold mt-1 tracking-wider font-orbitron">LANE ${i + 1}</span>
+        `;
+        keysIndicator.appendChild(kEl);
+      }
+
+      generateTargetQueue();
+
+      // 的の初期描画
+      renderVisibleTargets();
+      updateBottomStatus();
+    }
+
+    // 選択中のキーレーン数(keyCount)に準拠した重複制限付き生成
+    // 3K: 直近1つ, 4K: 直近2つ, 5K: 直近3つ, 6K: 直近4つ
+    function generateTargetQueue() {
+      targetQueue = [];
+      const historyLimit = keyCount - 2; // 重複排除対象となる過去の的の個数 (3K: 1, 4K: 2, 5K: 3, 6K: 4)
+      const lastLanes = []; 
+      
+      const size = gameMode === 'time-attack' ? TA_TARGET_TOTAL : 300;
+
+      for (let i = 0; i < size; i++) {
+        let nextLane;
+        do {
+          nextLane = Math.floor(Math.random() * keyCount);
+        } while (lastLanes.includes(nextLane));
+        
+        targetQueue.push(nextLane);
+        
+        lastLanes.push(nextLane);
+        if (lastLanes.length > historyLimit) {
+          lastLanes.shift(); // 規定数を超えた履歴を削除
+        }
+      }
+    }
+
+    // 10個先までのターゲットを完璧に等間隔で瞬間配置（transitionなし）
+    function renderVisibleTargets() {
+      // 範囲外の的をクリーンアップ
+      document.querySelectorAll('.target-circle').forEach(el => {
+        const idx = parseInt(el.dataset.idx);
+        if (idx < currentIndex || idx >= currentIndex + DISPLAY_COUNT) {
+          el.remove();
+        }
+      });
+
+      // レーンの数に応じて的の直径サイズを可変にする (3Kだと大きく、6Kだと収まるように)
+      const baseDiameter = keyCount === 3 ? 84 : keyCount === 4 ? 72 : keyCount === 5 ? 62 : 54;
+
+      // 10個の的を描画・更新
+      for (let offset = 0; offset < DISPLAY_COUNT; offset++) {
+        const targetIdx = currentIndex + offset;
+        if (targetIdx >= targetQueue.length) break;
+
+        const laneIdx = targetQueue[targetIdx];
+        const laneEl = document.getElementById(`lane-${laneIdx}`);
+        if (!laneEl) continue; // 安全ガード
+
+        const progress = offset / (DISPLAY_COUNT - 1); 
+        
+        // パース等間隔調整
+        const scale = 1.3 - (progress * 0.82); 
+        const bottomPercent = progress * 78; 
+        const opacity = 1.0 - (progress * 0.70); 
+        const zIndex = 100 - offset;
+
+        // 的が存在しない場合は新規に即時作成
+        let targetEl = document.getElementById(`target-idx-${targetIdx}`);
+        if (!targetEl) {
+          targetEl = document.createElement('div');
+          targetEl.className = 'target-circle flex flex-col items-center justify-end';
+          targetEl.id = `target-idx-${targetIdx}`;
+          targetEl.dataset.idx = targetIdx;
+
+          const isActive = (offset === 0);
+          
+          targetEl.innerHTML = `
+            <div class="relative flex flex-col items-center justify-center pointer-events-none">
+              <!-- 円形ターゲット (レーン数に合わせた最適サイズをインラインで適用) -->
+              <div class="bullseye-circle ${isActive ? 'active-target' : ''} rounded-full" style="width: ${baseDiameter}px; height: ${baseDiameter}px;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="bg-cyan-300 w-3 h-3 rounded-full shadow-[0_0_8px_#22d3ee]"></div>
+                </div>
+              </div>
+            </div>
+          `;
+          laneEl.appendChild(targetEl);
+        } else {
+          // 既存ターゲットのアクティブクラス更新
+          const innerTarget = targetEl.querySelector('.bullseye-circle');
+          if (innerTarget) {
+            if (offset === 0) {
+              innerTarget.classList.add('active-target');
+            } else {
+              innerTarget.classList.remove('active-target');
+            }
+          }
+        }
+
+        // transitionなしで瞬時に座標と大きさを確定
+        targetEl.style.bottom = `${bottomPercent}%`;
+        targetEl.style.transform = `translateX(-50%) scale(${scale})`;
+        targetEl.style.opacity = opacity;
+        targetEl.style.zIndex = zIndex;
+      }
+    }
+
+    // --- 各種アップデート ---
+    function updateProgressBar() {
+      const bar = document.getElementById('game-progress');
+      if (gameMode === 'time-attack') {
+        const pct = (currentIndex / TA_TARGET_TOTAL) * 100;
+        bar.style.width = `${Math.min(pct, 100)}%`;
+      } else {
+        const pct = ((limitTime - elapsedTime) / limitTime) * 100;
+        bar.style.width = `${Math.max(pct, 0)}%`;
+      }
+    }
+
+    function updateBottomStatus() {
+      const nextLane = targetQueue[currentIndex];
+      const bottomCharSpan = document.getElementById('bottom-next-char');
+      
+      if (nextLane !== undefined) {
+        const key = LANE_KEYS[nextLane];
+        bottomCharSpan.textContent = `NEXT: LANE ${nextLane + 1} [ ${key} ]`;
+        bottomCharSpan.className = "text-cyan-400 font-black text-xs tracking-wider";
+      } else {
+        bottomCharSpan.textContent = "FINISHED!";
+      }
+    }
+
+
+    // --- ゲーム中のタイマー処理 ---
+    function startTimer() {
+      if (isStarted) return;
+      isStarted = true;
+      startTime = performance.now();
+      
+      document.getElementById('ready-overlay').classList.add('hidden');
+      timerInterval = requestAnimationFrame(updateTimerLoop);
+    }
+
+    function updateTimerLoop(timestamp) {
+      if (!isPlaying) return;
+
+      const now = performance.now();
+      elapsedTime = (now - startTime) / 1000;
+
+      if (gameMode === 'time-attack') {
+        document.getElementById('game-timer').textContent = elapsedTime.toFixed(2);
+        timerInterval = requestAnimationFrame(updateTimerLoop);
+      } else {
+        const remaining = Math.max(0, limitTime - elapsedTime);
+        document.getElementById('game-timer').textContent = remaining.toFixed(2);
+        
+        updateProgressBar();
+
+        if (remaining <= 0) {
+          endGame();
+        } else {
+          timerInterval = requestAnimationFrame(updateTimerLoop);
+        }
+      }
+    }
+
+    function resetGameTimer() {
+      isPlaying = false;
+      if (timerInterval) {
+        cancelAnimationFrame(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+
+    // --- 射撃（レーン入力）ハンドラ ---
+    function handleLanePress(laneIndex, inputType) {
+      if (!isPlaying || isLocked) return;
+
+      if (!isStarted) {
+        const correctLane = targetQueue[currentIndex];
+        if (laneIndex === correctLane) {
+          startTimer();
+        } else {
+          triggerMiss();
+          return;
+        }
+      }
+
+      // レーンを叩いた一瞬のフィードバック
+      const flash = document.getElementById(`flash-${laneIndex}`);
+      if (flash) {
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 50);
+      }
+
+      // 正解レーン判定
+      const correctLane = targetQueue[currentIndex];
+      if (laneIndex === correctLane) {
+        handleHit(laneIndex);
+      } else {
+        triggerMiss();
+      }
+    }
+
+    // 的を撃ち抜いた時の処理
+    function handleHit(laneIndex) {
+      totalHits++;
+      
+      // 一番手前の的は瞬間的に消す
+      const currentTargetEl = document.getElementById(`target-idx-${currentIndex}`);
+      if (currentTargetEl) {
+        currentTargetEl.remove();
+      }
+
+      // カウンター更新
+      document.getElementById('shot-count').textContent = totalHits;
+
+      // インデックスを進める
+      currentIndex++;
+
+      if (gameMode === 'time-attack' && currentIndex >= TA_TARGET_TOTAL) {
+        endGame();
+        return;
+      }
+
+      // 瞬間移動で再描画
+      renderVisibleTargets();
+      updateProgressBar();
+      updateBottomStatus();
+    }
+
+    // ミス時のペナルティ処理（1秒間、画面を少し暗くして入力を受け付けなくする）
+    function triggerMiss() {
+      if (isLocked) return;
+      isLocked = true;
+      totalMisses++;
+
+      const missPanel = document.getElementById('miss-panel');
+      missPanel.classList.remove('hidden');
+
+      // 1秒後にロック解除
+      setTimeout(() => {
+        missPanel.classList.add('hidden');
+        isLocked = false;
+      }, 1000);
+    }
+
+
+    // --- キーボード入力 & キーコンフィグ登録用 ---
+    function setupKeyboardListeners() {
+      window.addEventListener('keydown', (e) => {
+        const pressedKey = e.key;
+
+        // キーコンフィグ割り当てモード時
+        if (activeAssignLane !== null) {
+          e.preventDefault();
+          handleKeyConfigInput(pressedKey);
+          return;
+        }
+
+        if (!isPlaying || isLocked) return;
+        
+        // メニュー画面やキーバインド設定中などは除く
+        if (!document.getElementById('menu-screen').classList.contains('hidden') || 
+            !document.getElementById('result-screen').classList.contains('hidden')) {
+          return;
+        }
+
+        if (KEY_LANE_MAP[pressedKey] !== undefined) {
+          e.preventDefault();
+          const targetLane = KEY_LANE_MAP[pressedKey];
+          // 割り当てられたキーが、現在のkeyCount(レーン数)の範囲内であるかチェック
+          if (targetLane < keyCount) {
+            handleLanePress(targetLane, 'key');
+          }
+        }
+      });
+    }
+
+
+    // --- ゲーム終了処理 ---
+    function endGame() {
+      resetGameTimer();
+
+      let finalScore = 0;
+      let scoreString = "";
+
+      if (gameMode === 'time-attack') {
+        finalScore = elapsedTime;
+        scoreString = `${finalScore.toFixed(2)}<span class="text-xl ml-1 font-sans font-bold">秒</span>`;
+        document.getElementById('result-mode-title').textContent = `TIME ATTACK (${keyCount}K - 50枚最速撃破)`;
+      } else {
+        finalScore = totalHits;
+        scoreString = `${finalScore}<span class="text-xl ml-1 font-sans font-bold">撃破</span>`;
+        document.getElementById('result-mode-title').textContent = `10秒リミットチャレンジ (${keyCount}K)`;
+      }
+
+      document.getElementById('result-score-val').innerHTML = scoreString;
+      document.getElementById('result-hit-count').textContent = `${totalHits} 枚`;
+      document.getElementById('result-miss-count').textContent = `${totalMisses} 回`;
+
+      const isNewBest = saveScore(finalScore);
+      const recordTag = document.getElementById('new-record-tag');
+      if (isNewBest) {
+        recordTag.classList.remove('hidden');
+      } else {
+        recordTag.classList.add('hidden');
+      }
+
+      displayRanking(finalScore);
+      showScreen('result-screen');
+    }
+
+    function restartGame() {
+      initGame();
+      showScreen('game-screen');
+    }
+
+    function exitToMenu() {
+      resetGameTimer();
+      loadBestScores();
+      showScreen('menu-screen');
+    }
+
+    // HTMLインライン onclick から直接実行されるすべての関数をグローバル（window）オブジェクトに明示的にバインド
+    window.selectMode = selectMode;
+    window.changeKeyCount = changeKeyCount;
+    window.switchMenuRankingTab = switchMenuRankingTab;
+    window.startKeyAssign = startKeyAssign;
+    window.cancelKeyAssign = cancelKeyAssign;
+    window.resetKeysToDefault = resetKeysToDefault;
+    window.exitToMenu = exitToMenu;
+    window.restartGame = restartGame;
+
+  </script>
+</body>
+</html>
