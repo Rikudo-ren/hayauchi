@@ -1,0 +1,17 @@
+{
+  "name": "hayauchi",
+  "version": "1.0.0",
+  "description": "早撃ちパニック 4K+ - Multiple Lanes Shooting Game",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static HTML project - no build step required'"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.1.1"
+  },
+  "devDependencies": {},
+  "keywords": ["game", "shooting", "vercel"],
+  "author": "",
+  "license": "MIT"
+}

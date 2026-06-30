@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>早撃ちパニック 4K+</title>
+  <!-- Vercel Web Analytics -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts for Ultra-Stylish and Readable UI -->
@@ -368,7 +373,7 @@
 
     // --- 起動時の初期化 ---
     window.addEventListener('DOMContentLoaded', () => {
-      // 保存されていた「最後に選択したキー数」を読み込み
+      // ���存されていた「最後に選択したキー数」を読み込み
       const savedKeyCount = localStorage.getItem('quick_shooter_last_key_count');
       if (savedKeyCount) {
         keyCount = parseInt(savedKeyCount);
